@@ -50,6 +50,7 @@
      <Compile Include="Assets\Scripts\ChangeCursor.cs" />
      <Compile Include="Assets\Scripts\MapController.cs" />
      <Compile Include="Assets\Scripts\MapMaker.cs" />
+     <Compile Include="Assets\Scripts\WorldBlock.cs" />
  <Reference Include="UnityEngine.UI">
  <HintPath>/Applications/Unity/Unity.app/Contents/UnityExtensions/Unity/GUISystem/UnityEngine.UI.dll</HintPath>
  </Reference>

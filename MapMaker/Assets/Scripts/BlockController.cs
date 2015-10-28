@@ -3,178 +3,138 @@ using System.Collections;
 using System.Collections.Generic;
 
 public class BlockController : MonoBehaviour {
-
-	public static bool doUpdate = true;
-	public Dictionary<string, GameObject> blocks;
-	public GameObject useBlock;
-	public GameObject blockPrefab;
-	public MapMaker map;
 	
+	public GameObject worldBlockPrefab;
+	
+	private GameObject[,] blocks;
+	private GameObject block;
+	private WorldBlock worldBlock;
+	
+	private MapMaker map;
 	private Transform blockHolder;
 	
-	void Start() 
+	void Start()
 	{
-		// Start by instantiating the starting block
-		//block = InstantiateBlock();
-		
-		// Create a new array with the size of whatever the number of possible blocks on the map can be
-		blocks = new Dictionary<string, GameObject>();
-		//blocks = new GameObject[(int)map.mapSize.x * (int)map.mapSize.y];
-		
-		// Set the parent for where the blocks are to go
-		string holderName = "WorldBlocks";
-		blockHolder = new GameObject(holderName).transform;
-		blockHolder.parent = transform;
-	}
-	
-	void Update() 
-	{
-		// Return if space is pressed
-		if ( ! doUpdate) { 
-			// Move the block out of view temporarily
-			Destroy(useBlock);
-			return;
-		}
-		
-		// Build a new block
-		if (Input.GetKeyDown(KeyCode.B)) {
-			useBlock = CreateBlock();
-		}
-		
-		// Place a block
-		if (Input.GetKey(KeyCode.Mouse0)) {
-			PlaceBlock(useBlock);
-		}
-	
-		// Move the block around the map
-		MoveBlock(useBlock);
-		
-		
-		if (Input.GetKeyDown (KeyCode.P)) {
-			foreach (string B in blocks.Keys) {
-				Debug.Log(blocks[B]);
+		// Set the properties of the objects we use
+		map = GameObject.FindObjectOfType<MapMaker>() as MapMaker;
+		blocks = new GameObject[(int)map.mapSize.x, (int)map.mapSize.y];
+		for (int i = 0; i < map.mapSize.x; i++) {
+			for (int j = 0; j < map.mapSize.y; j++) {
+				blocks[i, j] = null;
 			}
 		}
-	}
-	
-	public GameObject CreateBlock()
-	{
-		GameObject newBlock = InstantiateBlock(0, 0);
-		newBlock.name = "Block(" + newBlock.transform.position.x + "," + newBlock.transform.position.z + ")";
-		newBlock.transform.parent = blockHolder;
-	
-		return newBlock;
-	}
-	
-	public GameObject InstantiateBlock(float posX, float posY)
-	{
-		return Instantiate(blockPrefab, new Vector3(posX, 0.25f, posY), Quaternion.identity) as GameObject;
-	}
-	
-	// Move the block around the map with the mouse position
-	public void MoveBlock(GameObject moveBlock)
-	{
-		if ( ! moveBlock || moveBlock == null) {
-			return;
-		}
-	
-		// Cast out a ray from the camera
-		Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 		
-		// Get the object that the ray is hitting
+		// Create a holder for the blocks
+		blockHolder = new GameObject("BlockHolder").transform;
+		blockHolder.parent = GameObject.Find ("BlockController").transform;
+	}
+	
+		
+	void Update()
+	{		
+		if (block && block != null) {
+		
+			// Place the block on the map
+			if (Input.GetKeyDown(KeyCode.Mouse0)) {
+				PlaceBlock();
+			}
+			
+			// Move the block, following the mouse position
+			MoveBlock();
+		} else {
+		
+			// Build block
+			if (Input.GetKeyDown(KeyCode.B)) {
+				CreateBlock();
+				worldBlock.BlockName = "TempBlock";
+			}
+		}
+		
+		if (Input.GetKeyDown(KeyCode.P)) {
+			PrintBlocks();
+		}
+	}
+
+
+	public void CreateBlock()
+	{
+		// Cast a Ray and get the position on the map the Block will begin at
 		RaycastHit hit;
-		if (Physics.Raycast(ray, out hit)) {			
+		if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit)) {
 		
-			bool shouldMove = false;
-			
-			// If the object that is hit is a tile
-			if (hit.transform.gameObject.name == map.tilePrefab.name) {
-				shouldMove = true;
-			} 
-			// If the object hit is an existing block
-			foreach (string b in blocks.Keys) {
-				if (hit.transform.gameObject.name == b) {
-					shouldMove = true;
+			// Get the hit points as the nearest ints
+			Vector3 hits = new Vector3(Mathf.RoundToInt(hit.point.x), 0.25f, Mathf.RoundToInt(hit.point.z));
+		
+			// If a WorldBlock was already found at this position
+			GameObject foundBlock = GameObject.Find("Block("+hits.x+","+hits.z+")") as GameObject;
+			if (foundBlock && foundBlock != null) {
+		
+				// If the WorldBlock was found and the type is the same, return without saving
+				WorldBlock foundWorldBlock = foundBlock.GetComponent<WorldBlock>() as WorldBlock;
+				if (foundWorldBlock.Type == worldBlock.Type) {
+					return;
 				}
 			}
+		
+			// Create a new GameObject based on the BlockPrefab and give it the hit position
+			block = Instantiate(worldBlockPrefab, hits, Quaternion.identity) as GameObject;
 			
-			if (shouldMove) {
-				// Move the object to the next position
-				moveBlock.transform.position = new Vector3(
-					Mathf.Round(hit.point.x),
-					0.25f,
-					Mathf.Round(hit.point.z)
-				);
-			}
+			// Set the other properties of the WorldBlock
+			block.transform.parent = blockHolder;
+			
+			// Use worldBlock to set some other properties
+			worldBlock = block.GetComponent<WorldBlock>() as WorldBlock;
+			worldBlock.BlockName = "Block(" + hits.x + "," + hits.z + ")";
+			worldBlock.Type = "DEFAULT";
 		}
 	}
 	
-	public void PlaceBlock(GameObject placedBlock)
+	public void PlaceBlock()
 	{
-		// Check to see if a block is located at the current position
-		// TODO: check for type when adding different kinds of blocks
-		if (blockHolder.FindChild("Block("+placedBlock.transform.position.x+","+placedBlock.transform.position.z+")")) {
-			return;
-		}
-								
-		// Create a new block in the scene
-		placedBlock = Instantiate(blockPrefab, placedBlock.transform.position, Quaternion.identity) as GameObject;
-		placedBlock.name = "Block(" + placedBlock.transform.position.x + "," + placedBlock.transform.position.z + ")";
-		placedBlock.transform.parent = blockHolder;
+		// Create a new block in this position, 
+		// if a block of the same type doesn't already exist here
+		CreateBlock();
 		
-		// Save the Block
-		SaveBlock(placedBlock);
+		// Set the parent as the block holder
+		block.transform.parent = blockHolder;
+		
+		// Save the block 
+		SaveBlock();
 	}
 	
-	public bool CanPlaceBlock(GameObject checkBlock)
+	public void MoveBlock()
 	{
-		// If the block does not exist, false
-		if ( ! checkBlock || checkBlock == null) {
-			return false;
-		}
-		
-		// Loop through all the blocks in the scene and check their positions
-		if (blocks.Values.Count > 0) {
-			for (int i = 0; i < blocks.Values.Count; i++) {
+		// Cast a Ray and get the position on the map the Block will be moved to
+		RaycastHit hit;
+		if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out hit)) {
 			
-				// Check the position of all the blocks
-				if (blocks["Block("+checkBlock.transform.position.x+","+checkBlock.transform.position.z+")"] != null && blocks["Block("+checkBlock.transform.position.x+","+checkBlock.transform.position.z+")"].transform.position == checkBlock.transform.position) {
-					return false;
+			block.transform.position = new Vector3(
+				Mathf.Round(hit.point.x),
+				0.25f,
+				Mathf.Round(hit.point.z)
+			);
+		}	
+	}
+
+	public void SaveBlock()
+	{
+		int x = (int)(block.transform.position.x + map.mapSize.x/2);
+		int y = (int)(block.transform.position.z + map.mapSize.y/2);
+		blocks[x, y] = block;
+	}
+	
+	public void PrintBlocks()
+	{
+		for (int i = 0; i < map.mapSize.x; i++) {
+			for (int j = 0; j < map.mapSize.y; j++) {
+				if (blocks[i, j] != null) {
+					Debug.Log ("("+i+","+j+") " + blocks[i, j].name);
+				} else {
+					Debug.Log ("("+i+","+j+") null");
 				}
 			}
-		}
-		return true;
-	}
-	
-	public void RemoveBlock(GameObject removeBlock)
-	{
-		// Check to see if there is a block in the current mouse position
-		if ( ! CanRemoveBlock(removeBlock)) {
-			return;
-		}
-		
-		// 
-	}
-	
-	public bool CanRemoveBlock(GameObject removeBlock)
-	{
-		// Check to see if the block passed, is in the blocks array
-		
-				
-		return false;
-	}
-	
-	public void SaveBlocks()
-	{
-		// Loop through all the blocks in the scene and save them to a file/db
-	}
-	
-	public void SaveBlock(GameObject saveBlock)
-	{
-		// Put the block in the blocks dictionary
-		GameObject temp;
-		if ( ! blocks.TryGetValue("Block("+saveBlock.transform.position.x+","+saveBlock.transform.position.z+")", out temp)) {
-			blocks.Add("Block("+saveBlock.transform.position.x+","+saveBlock.transform.position.z+")", saveBlock);
 		}
 	}
 }
+
+

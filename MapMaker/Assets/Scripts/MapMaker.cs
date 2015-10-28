@@ -40,7 +40,7 @@ public class MapMaker : MonoBehaviour {
 				// Create a new tile and put it into the correct position
 				Vector3 tilePostition = new Vector3(-mapSize.x/2 + 0.5f + x, 0, -mapSize.y/2 + 0.5f + y);
 				Transform newTile = Instantiate(tilePrefab, tilePostition, Quaternion.Euler(Vector3.right * 90)) as Transform;
-				newTile.name = tilePrefab.name;
+				newTile.name = "Tile("+tilePostition.x+","+tilePostition.z+")";
 				newTile.parent = mapHolder;
 			}
 		}

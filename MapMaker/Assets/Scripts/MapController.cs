@@ -16,17 +16,10 @@ public class MapController : MonoBehaviour {
 	// Update is called once per frame
 	void Update () 
 	{
-		// If SPACE is pressed, don't update the BlockController
-		if (Input.GetKey(KeyCode.Space)) {
-			BlockController.doUpdate = false;
-		} else {
-			BlockController.doUpdate = true;
-		}
-	
-		// If SPACE + MOUSE 0 is pressed, drag the camera aroud the map
-		//if (Input.GetKey(KeyCode.Space) && Input.GetKey (KeyCode.Mouse0)) {
-			DragCamera();
-		//}
+		
+		// TODO: If SPACE + MOUSE 0 is pressed, drag the camera aroud the map
+		//		 for now it's just the arrow keys
+		DragCamera();
 		
 		// Scroll the camera in and out
 		if (Input.GetAxis("Mouse ScrollWheel") > 0) {
